@@ -1,4 +1,6 @@
 import random
+import numpy as np
+import pickle
 from typing import List, Optional
 
 
@@ -46,7 +48,7 @@ class MoveableEntity(Entity):
 
     def move(self, dx: int, dy: int, board_size: int) -> None:
         new_position = self.get_new_position(dx, dy, board_size)
-        print(f'position {self.position.row_index} {self.position.column_index}, new position {new_position.row_index} {new_position.column_index}')
+        # print(f'position {self.position.row_index} {self.position.column_index}, new position {new_position.row_index} {new_position.column_index}')
         if new_position:
             self.set_position(new_position)
 
@@ -67,10 +69,48 @@ class Food(Entity):
 class Player(MoveableEntity):
     def __init__(self, position: Position, energy: int):
         super().__init__(position, energy)
+        try:
+            with open("q_table.pkl", "rb") as f:
+                self.q_table = pickle.load(f)
+        except:
+            self.q_table = {}  # Initialize an empty Q-table if the file doesn't exist
+
+    def update_q_value(self, state, action, reward, alpha=0.1):
+        current_q = self.q_table.get((state, action), 0)
+        self.q_table[(state, action)] = current_q + alpha * (reward - current_q)
+
+    def get_possible_actions(self):
+        return [(dx, dy) for dx in range(-2, 2) for dy in range(-2, 2)]
+
+    def choose_action(self, state, epsilon=0.1):
+        possible_actions = self.get_possible_actions()
+        if np.random.random() < epsilon:
+            return random.choice(possible_actions)
+        else:
+            q_values = [self.q_table.get((state, action), 0) for action in possible_actions]
+            print(f'q_values: {q_values}')
+            return possible_actions[np.argmax(q_values)]
 
 class Beast(MoveableEntity):
     def __init__(self, position: Position, energy: int):
         super().__init__(position, energy)
+        try:
+            with open("q_table.pkl", "rb") as f:
+                self.q_table = pickle.load(f)
+        except:
+            self.q_table = {}  # Initialize an empty Q-table if the file doesn't exist
+
+    def get_possible_actions(self):
+        return [(dx, dy) for dx in range(-2, 2) for dy in range(-2, 2)]
+
+    def choose_action(self, state, epsilon=0.1):
+        possible_actions = self.get_possible_actions()
+        if np.random.random() < epsilon:
+            return random.choice(possible_actions)
+        else:
+            q_values = [self.q_table.get((state, action), 0) for action in possible_actions]
+            # print(f'q_values: {q_values}')
+            return possible_actions[np.argmax(q_values)]
 
 class Entities:
     def __init__(self):
@@ -98,6 +138,14 @@ class Entities:
 
     def get_beasts(self) -> List[Beast]:
         return self.beasts
+    
+    def get_entity(self, position: Position) -> Optional[Entity]:
+        if self.player.position.row_index == position.row_index and self.player.position.column_index == position.column_index:
+            return self.player
+        for beast in self.beasts:
+            if beast.position.row_index == position.row_index and beast.position.column_index == position.column_index:
+                return beast
+        return None
 
     def get_player(self) -> Player:
         return self.player

@@ -1,5 +1,5 @@
 import random
-from Entity import *
+from Entity import Beast, Entity, Entities, Position
 from typing import List
 
 class Cell:
@@ -10,11 +10,13 @@ class Board:
     def __init__(self, size: int):
         self.size = size
         self.grid: List[List[Cell]] = [[Cell() for _ in range(size)] for _ in range(size)]
+        self.entities = None
 
     def __getitem__(self, position) -> Cell:
         return self.grid[position.row_index][position.column_index]
 
     def set_content(self, entities: Entities, num_food: int) -> None:
+        self.entities = entities
         x, y = entities.player.position.row_index, entities.player.position.column_index
         self.grid[x][y].content = "P"
 
@@ -52,10 +54,31 @@ class Board:
 
     def get_board(self, player: Entity) -> List[List[str]]:
         board = []
-        for i in range(player.position.row_index - 2, player.position.row_index + 3):
-            row = []
-            for j in range(player.position.column_index - 2, player.position.column_index + 3):
-                x, y = i % self.size, j % self.size
-                row.append(self.grid[x][y].content)
-            board.append(row)
+
+        if type(player) == Beast:
+            for i in range(player.position.row_index - 2, player.position.row_index + 3):
+                row = []
+                for j in range(player.position.column_index - 2, player.position.column_index + 3):
+                    x, y = i % self.size, j % self.size
+                    content = self.grid[x][y].content
+                    if x == player.position.row_index and y == player.position.column_index:
+                        row.append('P')
+                    elif content in ['P', '=', '<', '>'] and (x, y) != (player.position.row_index, player.position.column_index):
+                        if player.energy < self.entities.get_entity(Position(x, y)).energy:
+                            row.append('<')
+                        elif player.energy > self.entities.get_entity(Position(x, y)).energy:
+                            row.append('>')
+                        else:
+                            row.append('=')
+                    else :
+                        row.append(content)
+                board.append(row)
+        else:
+            for i in range(player.position.row_index - 2, player.position.row_index + 3):
+                row = []
+                for j in range(player.position.column_index - 2, player.position.column_index + 3):
+                    x, y = i % self.size, j % self.size
+                    row.append(self.grid[x][y].content)
+                board.append(row)
+
         return board

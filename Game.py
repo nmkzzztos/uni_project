@@ -1,5 +1,7 @@
 import random
 import math
+import pickle
+import time
 from Board import Board
 from Entity import Entities, Entity, Player, Beast, Position
 
@@ -79,16 +81,19 @@ class Game:
         LESS = "<"
         GREATER = ">"
 
-        if content == FOOD:
-            entity.energy += 10
-        elif content == EQUALS:
-            entity.energy = 0
-        elif content == LESS:
-            entity.energy += target_entity.energy
-            self.entities.remove_beast(target_entity)
-        elif content == GREATER:
-            target_entity.energy += entity.energy
-            self.entities.remove_beast(entity)
+        try:
+            if content == FOOD:
+                entity.energy += 10
+            elif content == EQUALS:
+                entity.energy = 0
+            elif content == LESS:
+                entity.energy += target_entity.energy
+                self.entities.remove_beast(target_entity)
+            elif content == GREATER:
+                target_entity.energy += entity.energy
+                self.entities.remove_beast(entity)
+        except:
+            pass
 
         entity.energy -= math.sqrt(dx**2 + dy**2)
 
@@ -100,24 +105,42 @@ class Game:
 
     def get_entity_move(self, entity: Entity) -> tuple[int, int]:
         if isinstance(entity, Player):
-            return self.get_player_move()
+            return self.get_player_move(entity)
         elif isinstance(entity, Beast):
-            return random.randint(-2, 2), random.randint(-2, 2)
+            return self.get_player_move(entity)
+        
+    def get_current_state(self, entity: Entity):
+        grid_5x5 = self.board.get_board(entity)
+        current_state = ''.join([cell for row in grid_5x5 for cell in row])
+        # print(f'current_state: {current_state}')
+        return current_state
 
-    def get_player_move(self) -> tuple[int, int]:
-        try:
-            dx, dy = map(int, input("Enter x y: ").split())
-            if -2 <= dx <= 2 and -2 <= dy <= 2:
-                return dx, dy
-            else:
-                print("Invalid input. Coordinates must be between -2 and 2.")
-        except ValueError:
-            print("Invalid input. Please enter two numbers separated by a space.")
-        return self.get_player_move()
+    def get_reward(self, dx, dy):
+        target_position = Position(
+            (self.entities.player.position.row_index - dy) % self.board_size,
+            (self.entities.player.position.column_index + dx) % self.board_size,
+        )
+        content = self.board[target_position].content
+        # print(f'content: {content}')
+        if content in ['*', '<']:
+            return 100  # Reward for eating food
+        elif content in ['>']:
+            return -10  # Penalty for encountering a beast
+        else:
+            return -1  # Small penalty for other moves
+
+    def get_player_move(self, entity: Entity) -> tuple[int, int]:
+        state = self.get_current_state(entity)  # You'll need to implement this method
+        dx, dy = entity.choose_action(state)
+        return dx, dy
 
     def start(self) -> None:
         # Choose settings
-        self.pick_settings()
+        # self.pick_settings()
+        self.board_size = 20
+        self.initial_energy = 10
+        self.num_food = 20
+        self.entities_number = 10
 
         # Create entities
         self.entities = Entities()
@@ -128,21 +151,38 @@ class Game:
         self.board = Board(self.board_size)
         self.board.set_content(self.entities, self.num_food)
 
-        self.pick_mode()
+        # self.pick_mode()
+        self.state = "editor"
 
-        while self.entities.player.energy > 0:
+        while self.entities.player.energy >= 1:
             all_entities = self.entities.get_beasts() + [self.entities.player]
 
             random.shuffle(all_entities)
 
             for entity in all_entities:
                 if entity.energy <= 1:
-                    print(f"Unable to move {entity}")
+                    # print(f"Unable to move {entity}")
                     continue
                 if type(entity) == Player:
                     self.board.update_content(self.entities)
-                    self.board.print_board(self.entities.player, self.state)
-                    print(f"Player: {entity}")
+                    # self.board.print_board(entity, self.state)
+                    state = self.get_current_state(entity)
+                    dx, dy = self.get_player_move(entity)
+                    reward = self.get_reward(dx, dy)  # You'll need to implement this method
+                    self.entities.player.update_q_value(state, (dx, dy), reward)
+                    # print(f"Player: {entity}")
                 elif type(entity) == Beast:
-                    print(f"Beast: {entity}")
+                    self.board.update_content(self.entities)
+                    # self.board.print_board(entity, self.state)
+                    dx, dy = self.get_player_move(entity)
+                    content = self.board[Position((entity.position.row_index - dy) % self.board_size, (entity.position.column_index + dx) % self.board_size)].content
+                    # print(f"Beast: {entity} | content: {content}")
                 self.move_entity(entity)
+            
+            # time.sleep(3)
+        
+
+        with open("q_table.pkl", "wb") as f:
+            pickle.dump(self.entities.player.q_table, f)
+
+        self.start()

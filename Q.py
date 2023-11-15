@@ -17,9 +17,11 @@ class Q:
             path (str): Path to the file where the Q-table is stored.
         """
         try:
+            self.path = path
+            # print(f'path: {path}')
             with open(path, "rb") as f:
                 self.q_table = pickle.load(f)
-                f.close()
+                # f.close()
         except:
             self.q_table = {}  # Initialize an empty Q-table if the file doesn't exist
 
@@ -53,13 +55,14 @@ class Q:
         """
         if lose:
             return -10
+        
+        positive = ["*", "<"]
+        negative = [">", "="]	
 
-        if content == "*":
-            return 5
-        elif content == "<":
+        if content in positive:
             return 30
-        elif content == "=" or content == ">":
-            return -20
+        elif content in negative:
+            return -10
         else:
             return -1
 
@@ -75,6 +78,7 @@ class Q:
             reward (int): The reward received.
             alpha (float, optional): The learning rate. Default is 0.1.
         """
+        # print(f'state: {state} | action: {action} | reward: {reward}')
         current_q = self.q_table.get((state, action), 0)
         self.q_table[(state, action)] = current_q + alpha * (reward - current_q)
 
@@ -110,9 +114,10 @@ class Q:
         if random.uniform(0, 1) < epsilon:
             return random.choice(possible_actions)
         else:
-            q_values = [
-                self.q_table.get((state, action), 0) for action in possible_actions
-            ]
+            q_values = []
+            for action in possible_actions:
+                q_values.append(self.q_table.get((state, action), 0))
+            print(f'q_values: {q_values}')
             max_q_value = max(q_values)
             if q_values.count(max_q_value) > 1:
                 best_actions = [

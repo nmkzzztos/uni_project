@@ -56,30 +56,14 @@ class MoveableEntity(Entity):
 
         return None
 
-
 class Food(Entity):
     def __init__(self, position: Position):
         super().__init__(position)
-
 
 class Player(MoveableEntity):
     def __init__(self, position: Position, energy: int):
         super().__init__(position, energy)
         self.units: List[Entity] = []
-
-    def add_unit(self, unit: Entity) -> None:
-        self.units.append(unit)
-
-    def split(self, board_size: int) -> Entity:
-        position_left = Position(
-            (self.position.row_index) % board_size,
-            (self.position.column_index) % board_size,
-        )
-        new_unit_left = Player(position_left, self.energy // 2)
-        self.energy = self.energy // 2
-        self.units.append(new_unit_left)
-        return new_unit_left
-
 
 class Entities:
     def __init__(self):

@@ -20,7 +20,7 @@ def main(save_mode: bool = False, auto_settings: bool = True, play: bool = False
         current_win_count = 0 
         current_lose_count = 0 
         time_start = time.time()
-        iterations = 5000
+        iterations = 15000
 
         for i in range(iterations):
             if i % 100 == 0:

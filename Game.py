@@ -33,8 +33,8 @@ class Game:
         auto_settings: tuple = True,
         auto_play: bool = False,
         play: bool = False,
-        path_for_player: str = "main.pkl",
-        path_for_beast: str = "main.pkl",
+        path_for_player: str = "test.pkl",
+        path_for_beast: str = "test.pkl",
     ) -> None:
         self.board_size = None
         self.initial_energy = None
@@ -157,8 +157,9 @@ class Game:
 
         with open(path, "wb") as f:
             pickle.dump(self.q_for_player.q_table, f)
+            f.close()
 
-    def _update_energy(self, dx, dy, entity: Entity) -> None:
+    def _update_energy(self, dx, dy, entity: Entity, target_position: Position) -> None:
         """
         Update the energy of the entity based on the content of the cell it moved to.
 
@@ -167,11 +168,6 @@ class Game:
             dy (int): The change in y (row) position.
             entity (Entity): The entity whose energy is being updated.
         """
-        target_position = Position(
-            (entity.position.row_index - dy) % self.board_size,
-            (entity.position.column_index + dx) % self.board_size,
-        )
-
         # If the entity doesn't have enough energy to move to the target cell it dies
         if entity.energy < math.sqrt(dx**2 + dy**2):
             entity.energy = 0
@@ -265,8 +261,9 @@ class Game:
             (1, 0, "...*..<.....P*...........", '*')
         """
         dx_player, dy_player = None, None
+        target_position = None
         state_return = None
-        content = None
+        target_content = None
 
         for entity in all_entities:
             if entity.energy < 1:
@@ -280,29 +277,38 @@ class Game:
                 # Get player move from user input
                 if self.play:
                     dx, dy = self._handle_play_mode(entity)
-                    dx_player, dy_player = dx, dy
                 # Move player based on Q-table
                 else:
                     state = self.q_for_player.get_current_state(entity, self.board)
                     dx, dy = self.q_for_player.choose_action(state)
+                    dx_player, dy_player = dx, dy
                     state_return = state
 
                 # Print target cell and content if in auto-play mode
                 if self.auto_play:
                     self._show_target_and_content(entity, dx, dy)
-
             # Move beast based on Q-table
             else:
                 state = self.q_for_beast.get_current_state(entity, self.board)
                 dx, dy = self.q_for_beast.choose_action(state)
+                # print(f"beast: {entity}")
 
-            self._update_energy(dx, dy, entity)
+            target_position = Position(
+                (entity.position.row_index - dy) % self.board_size,
+                (entity.position.column_index + dx) % self.board_size,
+            )
+
+            target_content = self.board[target_position].content
+
+            self._update_energy(dx, dy, entity, target_position)
 
             self.board.clear_entity_at(entity.position)
 
             entity.move(dx, dy, self.board_size)
 
-        return (dx_player, dy_player, state_return, content)
+            # print(f'dx: {dx} | dy: {dy} | state: {state} | target: {target_content}')
+
+        return (dx_player, dy_player, state_return, target_content)
 
     def start(self) -> None:
         """
@@ -335,7 +341,7 @@ class Game:
             dx, dy, state, content = self._game_turn(all_entities, main_player)
 
             # Update Q-tables if in save mode
-            if self.save_mode and main_player.energy != 0:
+            if self.save_mode and main_player.energy != 0:               
                 reward = self.q_for_player.get_reward(content, None)
                 self.q_for_player.update_q_value(state, (dx, dy), reward)
 

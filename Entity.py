@@ -31,7 +31,7 @@ class MoveableEntity(Entity):
 
     def __str__(self) -> str:
         return f"Position: {self.position}, Energy: {self.energy}, ID: {self.id}"
-    
+
     def get_next_id(self):
         self.id_counter += 1
         return self.id_counter
@@ -56,13 +56,30 @@ class MoveableEntity(Entity):
 
         return None
 
+
 class Food(Entity):
     def __init__(self, position: Position):
         super().__init__(position)
 
+
 class Player(MoveableEntity):
     def __init__(self, position: Position, energy: int):
         super().__init__(position, energy)
+        self.units: List[Entity] = []
+
+    def add_unit(self, unit: Entity) -> None:
+        self.units.append(unit)
+
+    def split(self, board_size: int) -> Entity:
+        position_left = Position(
+            (self.position.row_index) % board_size,
+            (self.position.column_index) % board_size,
+        )
+        new_unit_left = Player(position_left, self.energy // 2)
+        self.energy = self.energy // 2
+        self.units.append(new_unit_left)
+        return new_unit_left
+
 
 class Entities:
     def __init__(self):
@@ -71,14 +88,19 @@ class Entities:
     def __str__(self) -> str:
         return f"Player: {self.player}, Beasts: {self.beasts}"
 
-    def add_players(self, board_size: int, initial_energy: int = 10, num_players: int = 1) -> None:
+    def add_players(
+        self, board_size: int, initial_energy: int = 10, num_players: int = 1
+    ) -> None:
         for _ in range(num_players):
             position = Position(
                 random.randint(0, board_size - 1), random.randint(0, board_size - 1)
             )
             self.players.append(Player(position, initial_energy))
 
-    def remove_player(self, player: Player) -> None:
+    def add_player(self, player: Player) -> None:
+        self.players.append(player)
+
+    def remove(self, player: Player) -> None:
         self.players.remove(player)
 
     def get_entities(self) -> List[Player]:
@@ -86,12 +108,14 @@ class Entities:
 
     def get_player(self) -> Player:
         for player in self.players:
-            # print(player)
             if player.id == 1:
                 return player
-    
+
     def get_entity_at_position(self, position: Position) -> Optional[Entity]:
         for entity in self.players:
-            if entity.position.row_index == position.row_index and entity.position.column_index == position.column_index:
+            if (
+                entity.position.row_index == position.row_index
+                and entity.position.column_index == position.column_index
+            ):
                 return entity
         return None

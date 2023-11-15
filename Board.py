@@ -18,7 +18,7 @@ class Board:
     def _get_grid_with_enemies(self, player: Entity) -> List[List[Cell]]:
         grid = self.grid.copy()
         for entity in self.entities.get_entities():
-            if entity == player:
+            if entity == player or entity in player.units:
                 continue
             else:
                 x, y = entity.position.row_index, entity.position.column_index
@@ -67,3 +67,6 @@ class Board:
                 row.append(grid[x][y].content)
             board.append(row)
         return board
+    
+    def clear_entity_at(self, position: Position) -> None:
+        self[position].content = "."

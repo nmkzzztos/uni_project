@@ -23,20 +23,18 @@ class Entity:
 
 
 class MoveableEntity(Entity):
-    _id_counter = 0
-
     def __init__(self, position: Position, energy: int):
         super().__init__(position)
         self.energy = energy
-        self.entity_id = self._get_next_id_()
-    
-    @classmethod
-    def _get_next_id_(cls):
-        cls._id_counter = cls._id_counter + 1
-        return cls._id_counter
+        self.id_counter = 0
+        self.id = self.get_next_id()
 
     def __str__(self) -> str:
-        return f"Position: {self.position}, Energy: {self.energy}, ID: {self.entity_id}"
+        return f"Position: {self.position}, Energy: {self.energy}, ID: {self.id}"
+
+    def get_next_id(self):
+        self.id_counter += 1
+        return self.id_counter
 
     def get_energy(self) -> int:
         return self.energy
@@ -46,7 +44,6 @@ class MoveableEntity(Entity):
 
     def move(self, dx: int, dy: int, board_size: int) -> None:
         new_position = self.get_new_position(dx, dy, board_size)
-        print(f'position {self.position.row_index} {self.position.column_index}, new position {new_position.row_index} {new_position.column_index}')
         if new_position:
             self.set_position(new_position)
 
@@ -59,6 +56,7 @@ class MoveableEntity(Entity):
 
         return None
 
+
 class Food(Entity):
     def __init__(self, position: Position):
         super().__init__(position)
@@ -68,36 +66,39 @@ class Player(MoveableEntity):
     def __init__(self, position: Position, energy: int):
         super().__init__(position, energy)
 
-class Beast(MoveableEntity):
-    def __init__(self, position: Position, energy: int):
-        super().__init__(position, energy)
 
 class Entities:
     def __init__(self):
-        self.player: Player = None
-        self.beasts: List[Beast] = []
+        self.players: List[Player] = []
 
     def __str__(self) -> str:
         return f"Player: {self.player}, Beasts: {self.beasts}"
 
-    def add_player(self, board_size: int, initial_energy: int = 10) -> None:
-        y, x = random.randint(0, board_size - 1), random.randint(0, board_size - 1)
-        player = Player(Position(x, y), initial_energy)
-        self.player = player
-
-    def add_beast(
-        self, board_size: int, num_beasts: int = 1, initial_energy: int = 10
+    def add_players(
+        self, board_size: int, initial_energy: int = 10, num_players: int = 1
     ) -> None:
-        for _ in range(num_beasts):
-            y, x = random.randint(0, board_size - 1), random.randint(0, board_size - 1)
-            beast = Beast(Position(x, y), initial_energy)
-            self.beasts.append(beast)
+        for _ in range(num_players):
+            position = Position(
+                random.randint(0, board_size - 1), random.randint(0, board_size - 1)
+            )
+            self.players.append(Player(position, initial_energy))
 
-    def remove_beast(self, beast: Beast) -> None:
-        self.beasts.remove(beast)
+    def remove(self, player: Player) -> None:
+        self.players.remove(player)
 
-    def get_beasts(self) -> List[Beast]:
-        return self.beasts
+    def get_entities(self) -> List[Player]:
+        return self.players
 
     def get_player(self) -> Player:
-        return self.player
+        for player in self.players:
+            if player.id == 1:
+                return player
+
+    def get_entity_at_position(self, position: Position) -> Optional[Entity]:
+        for entity in self.players:
+            if (
+                entity.position.row_index == position.row_index
+                and entity.position.column_index == position.column_index
+            ):
+                return entity
+        return None
